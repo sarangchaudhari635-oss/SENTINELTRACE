@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sentineltrace-app
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: SERVER_PORT
+        value: 8081
+      - key: DB_URL
+        fromDatabase:
+          name: sentineltrace-db
+          property: connectionString
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: update
+      - key: ADMIN_PASSWORD
+        generateValue: true
+
+databases:
+  - name: sentineltrace-db
+    plan: free
+    region: oregon
+    databaseName: sentineltrace
+    user: postgres

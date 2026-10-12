@@ -80,7 +80,7 @@ spring.datasource.username=${DB_USERNAME:postgres}
 spring.datasource.password=${DB_PASSWORD}
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.open-in-view=false
-server.port=8080
+server.port=${SERVER_PORT:8081}
 ```
 `ddl-auto=update` is acceptable for a quick local demo. For a more controlled version, add Flyway migrations and set `ddl-auto=validate`. Never commit credentials.
 
@@ -92,9 +92,16 @@ On Windows:
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
-Or use `mvn spring-boot:run` if Maven is installed.
+Or run the pre-built standalone JAR:
+```powershell
+java -jar target\sentineltrace-1.0.0.jar --server.port=8081
+```
 
-Open `http://localhost:8080`.
+Open `http://localhost:8081/dashboard`.
+
+### Live Public Tunnel & Cloud Deployment
+- **Active Public HTTPS Tunnel**: [https://sentineltrace-live.loca.lt/dashboard](https://sentineltrace-live.loca.lt/dashboard) (Password: `223.181.61.198`)
+- **Docker / Render / Railway Deployment**: See [docs/DEPLOYMENT.md](file:///c:/Users/Sarang%20Chaudhari/OneDrive/Desktop/aryan%20project/docs/DEPLOYMENT.md)
 
 ### Test and package
 ```bash

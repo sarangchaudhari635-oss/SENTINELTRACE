@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Incident Investigation #' + ${detail.incident.id})}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar('incidents')}"></nav>
+<div th:replace="~{fragments/layout :: alerts}"></div>
+<div th:replace="~{fragments/layout :: simulatorModal}"></div>
+
+<main class="container-fluid px-4 py-4">
+    <!-- Breadcrumb & Back -->
+    <div class="mb-3">
+        <a th:href="@{/incidents}" class="text-secondary small text-decoration-none">
+            <i class="bi bi-chevron-left me-1"></i> Back to Incidents Directory
+        </a>
+    </div>
+
+    <!-- Incident Header Bar -->
+    <div class="card card-sentinel mb-4 p-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="font-mono text-cyan fw-bold fs-5" th:text="'INCIDENT #' + ${detail.incident.id}">#1</span>
+                    <span class="badge" th:classappend="'badge-severity-' + ${detail.incident.severity}" th:text="${detail.incident.severity}">HIGH</span>
+                    <span class="badge" th:classappend="'badge-status-' + ${detail.incident.status}" th:text="${detail.incident.status}">OPEN</span>
+                    <span class="badge bg-dark border border-secondary font-mono" th:text="'Risk: ' + ${detail.incident.riskScore} + '/100'">Risk: 75/100</span>
+                </div>
+                <h3 class="fw-bold text-white mb-1" th:text="${detail.incident.title}">Repeated failed logins detected from 192.168.1.1</h3>
+                <p class="text-secondary mb-0 small">
+                    Fingerprint: <code class="text-info font-mono" th:text="${detail.incident.fingerprint}">RULE_FAILED_LOGINS:192.168.1.1</code>
+                </p>
+            </div>
+
+            <!-- Action Buttons for State Transitions -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- Acknowledge Button: Available if OPEN -->
+                <form th:if="${detail.incident.status.name() == 'OPEN'}" th:action="@{'/incidents/' + ${detail.incident.id} + '/status'}" method="post">
+                    <input type="hidden" name="status" value="ACKNOWLEDGED">
+                    <button type="submit" class="btn btn-outline-info">
+                        <i class="bi bi-eye-fill me-1"></i> Acknowledge Incident
+                    </button>
+                </form>
+
+                <!-- Resolve Button: Available if OPEN or ACKNOWLEDGED -->
+                <form th:if="${detail.incident.status.name() == 'OPEN' or detail.incident.status.name() == 'ACKNOWLEDGED'}"
+                      th:action="@{'/incidents/' + ${detail.incident.id} + '/status'}" method="post">
+                    <input type="hidden" name="status" value="RESOLVED">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle-fill me-1"></i> Resolve & Close
+                    </button>
+                </form>
+
+                <!-- Resolved badge -->
+                <span th:if="${detail.incident.status.name() == 'RESOLVED'}" class="badge bg-success bg-opacity-25 text-success border border-success p-2 font-mono">
+                    <i class="bi bi-shield-check me-1"></i> RESOLVED AT <span th:text="${#temporals.format(detail.incident.resolvedAt, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata Grid -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card card-sentinel p-3 h-100">
+                <div class="stat-label mb-1">Source Identity</div>
+                <div class="font-mono text-white fw-bold fs-5" th:text="${detail.incident.sourceIp}">192.168.1.1</div>
+                <div class="text-secondary small mt-1">Normalized Source IP</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card card-sentinel p-3 h-100">
+                <div class="stat-label mb-1">Matched Rule</div>
+                <div class="text-white fw-bold fs-6" th:text="${detail.rule != null ? detail.rule.name : detail.incident.ruleCode}">Repeated Failed Logins</div>
+                <div class="font-mono text-cyan small mt-1" th:text="${detail.rule != null ? detail.rule.ruleCode : '-'}">RULE_FAILED_LOGINS</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card card-sentinel p-3 h-100">
+                <div class="stat-label mb-1">Rule Threshold & Window</div>
+                <div class="font-mono text-warning fw-bold fs-5" th:text="${detail.rule != null ? detail.rule.threshold + ' events / ' + detail.rule.windowSeconds + 's' : '-'}">5 events / 300s</div>
+                <div class="text-secondary small mt-1">Rolling Time Window</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card card-sentinel p-3 h-100">
+                <div class="stat-label mb-1">Evidence Count</div>
+                <div class="font-mono text-danger fw-bold fs-5" th:text="${detail.incident.evidenceCount} + ' Events'">5 Events</div>
+                <div class="text-secondary small mt-1">
+                    First: <span class="font-mono" th:text="${#temporals.format(detail.incident.firstSeen, 'HH:mm:ss')}">18:00</span> |
+                    Last: <span class="font-mono" th:text="${#temporals.format(detail.incident.lastSeen, 'HH:mm:ss')}">18:04</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Columns: Evidence Events & Audit History Trail -->
+    <div class="row g-3">
+        <!-- Supporting Evidence Events (Col 8) -->
+        <div class="col-lg-8">
+            <div class="card card-sentinel">
+                <div class="card-header card-header-sentinel d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-code-fill text-cyan me-2"></i> Supporting Evidence Events Log (<span th:text="${detail.evidenceEvents.size()}">0</span> events)
+                    </span>
+                    <span class="badge bg-secondary bg-opacity-25 font-mono text-muted" style="font-size: 0.72rem;">Window Correlated</span>
+                </div>
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-sentinel table-hover">
+                        <thead>
+                            <tr>
+                                <th>Event ID</th>
+                                <th>Occurred (UTC)</th>
+                                <th>Type</th>
+                                <th>Username</th>
+                                <th>Endpoint</th>
+                                <th>Evidence Context</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${detail.evidenceEvents.empty}">
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No supporting events logged within window.
+                                </td>
+                            </tr>
+                            <tr th:each="ev : ${detail.evidenceEvents}">
+                                <td class="font-mono text-cyan small" th:text="'#' + ${ev.id}">#1</td>
+                                <td class="font-mono text-secondary small" th:text="${#temporals.format(ev.occurredAt, 'HH:mm:ss')}">18:30:15</td>
+                                <td>
+                                    <span class="badge badge-event" th:text="${ev.eventType}">LOGIN_FAILURE</span>
+                                </td>
+                                <td class="small text-white" th:text="${ev.username != null ? ev.username : '-'}">admin</td>
+                                <td class="font-mono small text-secondary" th:text="${ev.endpoint != null ? ev.endpoint : '-'}">/login</td>
+                                <td class="small text-secondary" th:text="${ev.details}">Invalid password</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Trail (Col 4) -->
+        <div class="col-lg-4">
+            <div class="card card-sentinel">
+                <div class="card-header card-header-sentinel d-flex align-items-center">
+                    <i class="bi bi-clock-history text-warning me-2"></i> Incident Audit Trail
+                </div>
+                <div class="card-body p-3">
+                    <div th:if="${detail.auditLogs.empty}" class="text-center text-muted py-3">
+                        No audit records found.
+                    </div>
+                    <div th:each="log, iterStat : ${detail.auditLogs}" class="mb-3 pb-3 border-bottom border-secondary border-opacity-25">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-info bg-opacity-25 text-info font-mono" style="font-size: 0.75rem;" th:text="${log.action}">INCIDENT_CREATED</span>
+                            <span class="font-mono text-muted" style="font-size: 0.72rem;" th:text="${#temporals.format(log.createdAt, 'HH:mm:ss')}">18:30:00</span>
+                        </div>
+                        <div class="small text-secondary">
+                            Transition:
+                            <span class="font-mono text-muted" th:text="${log.previousStatus != null ? log.previousStatus : 'INITIAL'}">null</span>
+                            <i class="bi bi-arrow-right mx-1 text-cyan"></i>
+                            <span class="font-mono text-white fw-bold" th:text="${log.newStatus}">OPEN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Scoring Explainer Box -->
+            <div class="card card-sentinel mt-3 p-3">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-info-circle-fill text-cyan me-2"></i>
+                    <span class="fw-bold text-white small">Deterministic Scoring Formula</span>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.78rem;">
+                    Risk score is deterministic and strictly bounded between 0 and 100.
+                    Baseline severity score (HIGH = 75) + 4 points per evidence event beyond the threshold, capped at 100.
+                    Detections indicate matched rule conditions, not proof of system penetration.
+                </p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+</body>
+</html>

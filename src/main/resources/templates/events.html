@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Security Events Log')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar('events')}"></nav>
+<div th:replace="~{fragments/layout :: alerts}"></div>
+<div th:replace="~{fragments/layout :: simulatorModal}"></div>
+
+<main class="container-fluid px-4 py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-1 text-white d-flex align-items-center">
+                <i class="bi bi-activity text-cyan me-2"></i> Normalized Security Events Log
+            </h2>
+            <p class="text-secondary mb-0 small">
+                Immutable event stream stored in PostgreSQL. Ingested via REST API or simulated for testing.
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-cyan" data-bs-toggle="modal" data-bs-target="#simulateModal">
+                <i class="bi bi-play-circle-fill me-1"></i> Ingest Test Events
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Bar Card -->
+    <div class="card card-sentinel mb-4 p-3">
+        <form th:action="@{/events}" method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label text-secondary small fw-bold mb-1">Filter by Event Type</label>
+                <select class="form-select form-select-sentinel" name="eventType">
+                    <option value="">All Event Types</option>
+                    <option th:each="et : ${eventTypes}"
+                            th:value="${et}"
+                            th:text="${et}"
+                            th:selected="${et == eventType}">LOGIN_FAILURE</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label text-secondary small fw-bold mb-1">Search Source IP</label>
+                <input type="text" class="form-control form-control-sentinel font-mono" name="sourceIp"
+                       placeholder="e.g. 192.168.1.1 or 198.51.100" th:value="${sourceIp}">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-cyan flex-grow-1">
+                    <i class="bi bi-funnel-fill me-1"></i> Filter
+                </button>
+                <a th:href="@{/events}" class="btn btn-outline-sentinel">
+                    <i class="bi bi-x-circle me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Events Table Card -->
+    <div class="card card-sentinel">
+        <div class="card-header card-header-sentinel d-flex justify-content-between align-items-center">
+            <span class="d-flex align-items-center">
+                <i class="bi bi-list-ul text-info me-2"></i> Ingested Events (<span th:text="${page.totalElements}">0</span> total)
+            </span>
+            <span class="badge bg-secondary bg-opacity-25 font-mono text-muted" style="font-size: 0.72rem;">Page <span th:text="${page.number + 1}">1</span> of <span th:text="${page.totalPages > 0 ? page.totalPages : 1}">1</span></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sentinel table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Occurred At (UTC)</th>
+                        <th>Event Type</th>
+                        <th>Source IP</th>
+                        <th>Username</th>
+                        <th>Endpoint</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${page.content.empty}">
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            No events match the specified filter criteria.
+                        </td>
+                    </tr>
+                    <tr th:each="e : ${page.content}">
+                        <td class="font-mono text-cyan" th:text="'#' + ${e.id}">#1</td>
+                        <td class="font-mono text-secondary small" th:text="${#temporals.format(e.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">2026-10-12 18:30:00</td>
+                        <td>
+                            <span class="badge badge-event" th:text="${e.eventType}">LOGIN_FAILURE</span>
+                        </td>
+                        <td class="font-mono text-white fw-semibold small" th:text="${e.sourceIp}">192.168.1.1</td>
+                        <td class="small text-secondary" th:text="${e.username != null ? e.username : '-'}">admin</td>
+                        <td class="font-mono small text-muted" th:text="${e.endpoint != null ? e.endpoint : '-'}">/login</td>
+                        <td class="small text-secondary" style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                            th:text="${e.details != null ? e.details : '-'}" th:title="${e.details}">
+                            Invalid credentials attempt
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div th:if="${page.totalPages > 1}" class="card-footer card-header-sentinel d-flex justify-content-between align-items-center">
+            <span class="text-secondary small">
+                Showing <span th:text="${page.number * page.size + 1}">1</span> to <span th:text="${(page.number + 1) * page.size > page.totalElements ? page.totalElements : (page.number + 1) * page.size}">20</span> of <span th:text="${page.totalElements}">100</span>
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${page.first} ? 'disabled' : ''">
+                    <a class="page-link bg-dark text-secondary border-secondary"
+                       th:href="@{/events(page=${page.number - 1}, eventType=${eventType}, sourceIp=${sourceIp})}">Previous</a>
+                </li>
+                <li class="page-item" th:classappend="${page.last} ? 'disabled' : ''">
+                    <a class="page-link bg-dark text-secondary border-secondary"
+                       th:href="@{/events(page=${page.number + 1}, eventType=${eventType}, sourceIp=${sourceIp})}">Next</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+</body>
+</html>
